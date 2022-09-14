@@ -370,7 +370,10 @@ class _Frame(DaskMethodsMixin, OperatorMethodMixin):
         return type(self)(dsk, name, self._meta, self.divisions)
 
     def to_bag(self, index=False, format="tuple"):
-        raise NotImplementedError("Concrete class must provide to_bag implementation")
+        raise NotImplementedError("Concrete class must provide to_bag")
+
+    def __getitem__(self, key):
+        raise NotImplementedError("Concrete class must provide __getitem__")
 
     @property
     def _constructor(self):

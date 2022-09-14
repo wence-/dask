@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import collections
 import itertools as it
 import operator
 import uuid
 import warnings
 from numbers import Integral
+from typing import Any, Callable, Literal, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -1058,7 +1061,10 @@ def _fillna_group(group, by, value, method, limit, fillna_axis):
     )
 
 
-def _aggregate_docstring(based_on=None):
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def _aggregate_docstring(based_on=None) -> Callable[[F], F]:
     # Insert common groupby-aggregation docstring.
     # Use `based_on` parameter to add note about the
     # Pandas method the Dask version is based on.
@@ -1076,12 +1082,12 @@ def _aggregate_docstring(based_on=None):
             - string function name
             - list of functions and/or function names, e.g. ``[np.sum, 'mean']``
             - dict of column names -> function, function name or list of such.
-        split_every : int, optional
+        split_every : int | None | False
             Number of intermediate partitions that may be aggregated at once.
             This defaults to 8. If your intermediate partitions are likely to
             be small (either due to a small number of groups or a small initial
             partition size), consider increasing this number for better performance.
-        split_out : int, optional
+        split_out : int
             Number of output partitions. Default is 1.
         shuffle : bool or str, optional
             Whether a shuffle-based algorithm should be used. A specific
@@ -1680,7 +1686,13 @@ class _GroupBy:
         )
 
     @_aggregate_docstring()
-    def aggregate(self, arg, split_every=None, split_out=1, shuffle=None):
+    def aggregate(
+        self,
+        arg,
+        split_every: None | Literal[False] | int = None,
+        split_out: int = 1,
+        shuffle: str | bool | None = None,
+    ):
         if shuffle is None:
             if split_out > 1:
                 shuffle = shuffle or config.get("shuffle", None) or "tasks"
@@ -1742,6 +1754,7 @@ class _GroupBy:
 
         chunk_funcs, aggregate_funcs, finalizers = _build_agg_args(spec)
 
+        levels: list[int] | int
         if isinstance(self.by, (tuple, list)) and len(self.by) > 1:
             levels = list(range(len(self.by)))
         else:
