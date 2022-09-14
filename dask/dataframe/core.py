@@ -369,6 +369,9 @@ class _Frame(DaskMethodsMixin, OperatorMethodMixin):
             name = rename.get(name, name)
         return type(self)(dsk, name, self._meta, self.divisions)
 
+    def to_bag(self, index=False, format="tuple"):
+        raise NotImplementedError("Concrete class must provide to_bag implementation")
+
     @property
     def _constructor(self):
         return new_dd_object
@@ -6301,16 +6304,16 @@ def apply_concat_apply(
     aggregate=None,
     combine=None,
     meta=no_default,
-    token=None,
+    token: str | None = None,
     chunk_kwargs=None,
     aggregate_kwargs=None,
     combine_kwargs=None,
-    split_every=None,
-    split_out=None,
+    split_every: int | Literal[False] | None = None,
+    split_out: int = 1,
     split_out_setup=None,
     split_out_setup_kwargs=None,
-    sort=None,
-    ignore_index=False,
+    sort: bool = False,
+    ignore_index: bool = False,
     **kwargs,
 ):
     """Apply a function to blocks, then concat, then apply again
@@ -6390,16 +6393,16 @@ def apply_concat_apply(
 
     dfs = [arg for arg in args if isinstance(arg, _Frame)]
 
-    npartitions = {arg.npartitions for arg in dfs}
-    if len(npartitions) > 1:
+    try:
+        (npartitions,) = {arg.npartitions for arg in dfs}
+    except ValueError:
         raise ValueError("All arguments must have same number of partitions")
-    npartitions = npartitions.pop()
 
     if split_every is None:
         split_every = 8
     elif split_every is False:
         split_every = npartitions
-    elif split_every < 2 or not isinstance(split_every, Integral):
+    elif split_every < 2:
         raise ValueError("split_every must be an integer >= 2")
 
     token_key = tokenize(
